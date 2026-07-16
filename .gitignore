@@ -12,6 +12,12 @@ best_model.pt
 # Kept out of the repo so the staff copy is always the source of truth.
 constants.yaml
 
+# Course-authored brief and its text dump. Not our work, not part of the
+# submission, and both carry a staff member's email address — which does not
+# belong in a public repo. README.md restates the task instead.
+Project B*.pdf
+Project_B_context.md
+
 # Python
 __pycache__/
 *.py[cod]
