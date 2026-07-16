@@ -1,0 +1,671 @@
+<title>Project B Section A &#8212; Active Learning for Employee Attrition</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --plane: #f2f1ed;
+    --ink-1: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --s-light: #86b6ef;
+    --s-mid: #3987e5;
+    --s-dark: #1c5cab;
+    --accent: #2a78d6;
+    --good: #006300;
+    --bad: #c0392b;
+    --ring: rgba(11, 11, 11, 0.10);
+    --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--plane);
+    font-family: var(--font);
+    color: var(--ink-1);
+  }
+
+  .deck {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+
+  .banner {
+    background: var(--surface-1);
+    border: 1px solid var(--ring);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 22px;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .banner b { color: var(--ink-1); }
+  .banner kbd {
+    font-family: var(--font);
+    background: var(--plane);
+    border: 1px solid var(--axis);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+  }
+
+  .slide {
+    position: relative;
+    background: var(--surface-1);
+    border: 1px solid var(--ring);
+    border-radius: 12px;
+    aspect-ratio: 16 / 9;
+    padding: 40px 52px 46px;
+    margin-bottom: 26px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .num {
+    position: absolute;
+    top: 22px;
+    right: 26px;
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .speaker {
+    position: absolute;
+    top: 20px;
+    left: 52px;
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h2 {
+    margin: 22px 0 3px;
+    font-size: 27px;
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+  }
+
+  .sub {
+    margin: 0 0 16px;
+    font-size: 15px;
+    color: var(--ink-2);
+    line-height: 1.45;
+  }
+  .sub b { color: var(--ink-1); }
+
+  .body { flex: 1; min-height: 0; display: flex; gap: 26px; }
+  .fig { flex: 1; min-width: 0; display: flex; align-items: center; }
+  .fig svg { width: 100%; height: 100%; display: block; }
+
+  .takeaway {
+    margin-top: 12px;
+    padding: 9px 14px;
+    background: var(--plane);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink-1);
+  }
+
+  text { font-family: var(--font); }
+  .ax { fill: var(--muted); font-size: 12px; }
+  .axb { fill: var(--ink-2); font-size: 12px; font-weight: 600; }
+  .val { fill: var(--ink-1); font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .valm { fill: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .ttl { fill: var(--ink-1); font-size: 13px; font-weight: 650; }
+  .note { fill: var(--muted); font-size: 11px; }
+
+  /* ---- slide 1 ---- */
+  .hero { display: flex; gap: 30px; align-items: center; height: 100%; }
+  .hero-l { flex: 1.05; }
+  .hero-r { flex: 1; }
+  .setup { list-style: none; margin: 0; padding: 0; }
+  .setup li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--grid);
+    font-size: 14.5px;
+  }
+  .setup li span:first-child { color: var(--ink-2); }
+  .setup li span:last-child { font-weight: 650; font-variant-numeric: tabular-nums; }
+
+  .keybox {
+    background: var(--plane);
+    border: 1px solid var(--ring);
+    border-radius: 9px;
+    padding: 16px 18px;
+  }
+  .keybox h3 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .keybox p { margin: 0 0 9px; font-size: 14px; line-height: 1.5; color: var(--ink-1); }
+  .keybox p:last-child { margin-bottom: 0; }
+  .keybox b { font-weight: 650; }
+
+  /* ---- table ---- */
+  table.t {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  table.t th {
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 0 8px 7px 0;
+    border-bottom: 1px solid var(--axis);
+  }
+  table.t td {
+    padding: 7px 8px 7px 0;
+    border-bottom: 1px solid var(--grid);
+    color: var(--ink-1);
+  }
+  table.t td.d { text-align: right; font-weight: 650; }
+  .dn { color: var(--bad); }
+  .up { color: var(--good); }
+  .zero { color: var(--muted); }
+
+  .final {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 4px;
+  }
+  .final .big {
+    font-size: 62px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .final .cap { font-size: 14px; color: var(--ink-2); line-height: 1.35; }
+
+  @media print {
+    body { background: #fff; }
+    .banner { display: none; }
+    .deck { max-width: none; padding: 0; }
+    .slide {
+      page-break-after: always;
+      break-after: page;
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      width: 100vw;
+      height: 100vh;
+      aspect-ratio: auto;
+    }
+  }
+  @page { size: 1280px 720px; margin: 0; }
+</style>
+
+<div class="deck">
+
+  <div class="banner">
+    <b>Project B &#8212; Section A video deck.</b> 6 slides, scripted to 100 seconds.
+    Speaker turns are marked top-left on each slide; the grey box under each figure is the
+    spoken takeaway. Every number was measured through the official framework
+    (<code>call_oracle</code> / <code>train_model</code> / <code>evaluate_model</code>) on seeds 1&#8211;3 &#8212;
+    see <code>experiments/plot_data.json</code>.
+    To export: <kbd>Ctrl</kbd>+<kbd>P</kbd> &#8594; Save as PDF &#8594; Background graphics on.
+  </div>
+
+  <!-- ============================= SLIDE 1 ============================= -->
+  <section class="slide">
+    <div class="speaker">Raz</div>
+    <div class="num">1 / 6</div>
+    <div class="hero">
+      <div class="hero-l">
+        <h2>Buy 5,000 labels.<br>Maximise F1 on &#8220;Left&#8221;.</h2>
+        <p class="sub">An oracle sells labels one employee at a time. The classifier is fixed.
+          The only real decision is <b>which employees to pay for</b>.</p>
+        <ul class="setup">
+          <li><span>Unlabeled pool</span><span>14,900</span></li>
+          <li><span>Free initial labels</span><span>500</span></li>
+          <li><span>Oracle budget</span><span>5,000 unique IDs</span></li>
+          <li><span>Classifier</span><span>RandomForest &#8212; fixed</span></li>
+          <li><span>Metric</span><span>F1 (&#8220;Left&#8221;), threshold 0.5</span></li>
+        </ul>
+      </div>
+      <div class="hero-r">
+        <div class="keybox">
+          <h3>The metric dictates the strategy</h3>
+          <p><b>Only the positive class scores.</b> True negatives contribute nothing to F1,
+            so a label is worth buying mainly if it is &#8212; or teaches us about &#8212; a &#8220;Left&#8221;.</p>
+          <p><b>The 0.5 threshold is welded shut.</b> The grader calls <code>predict()</code>.
+            We cannot tune the threshold, so the only lever on the precision/recall
+            balance is <b>what the forest is trained on</b>.</p>
+          <p>Those two facts produced our two design choices: <b>hunt positives</b>,
+            then <b>reweight by duplication</b>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= SLIDE 2 ============================= -->
+  <section class="slide">
+    <div class="speaker">Raz</div>
+    <div class="num">2 / 6</div>
+    <h2>What to buy: hunt positives, don&#8217;t refine the boundary</h2>
+    <p class="sub">Same 5,000-query budget, three acquisition rules. Textbook uncertainty sampling
+      <b>loses to simply asking for the most-likely positives</b>.</p>
+    <div class="body">
+      <div class="fig">
+        <svg viewBox="0 0 1020 340" role="img" aria-label="Left panel: true positives bought out of 5000 queries &#8212; random 1652, uncertainty 2408, positive hunting 3140. Right panel: resulting mean F1 &#8212; random 0.6124, uncertainty 0.6316, positive hunting 0.6471.">
+          <!-- ============ LEFT PANEL: positives bought ============ -->
+          <text x="0" y="14" class="ttl">True positives bought with 5,000 queries</text>
+          <text x="0" y="31" class="note">Pool base rate &#8776; 33% &#8212; the yield a blind budget gets</text>
+
+          <!-- gridlines -->
+          <g stroke="var(--grid)" stroke-width="1">
+            <line x1="132" y1="290" x2="470" y2="290"/>
+            <line x1="132" y1="238" x2="470" y2="238"/>
+            <line x1="132" y1="186" x2="470" y2="186"/>
+            <line x1="132" y1="134" x2="470" y2="134"/>
+            <line x1="132" y1="82"  x2="470" y2="82"/>
+          </g>
+          <g class="ax" text-anchor="end">
+            <text x="124" y="294">0</text>
+            <text x="124" y="242">1,000</text>
+            <text x="124" y="190">2,000</text>
+            <text x="124" y="138">3,000</text>
+            <text x="124" y="86">4,000</text>
+          </g>
+
+          <!-- bars: scale 1000 units = 52px -->
+          <!-- random 1652 -> h=86 -->
+          <rect x="150" y="204" width="76" height="86" rx="4" fill="var(--s-light)"/>
+          <rect x="150" y="286" width="76" height="4" fill="var(--s-light)"/>
+          <text x="188" y="196" class="val" text-anchor="middle">1,652</text>
+          <text x="188" y="311" class="axb" text-anchor="middle">Random</text>
+          <text x="188" y="326" class="note" text-anchor="middle">33.0% hit rate</text>
+
+          <!-- uncertainty 2408 -> h=125 -->
+          <rect x="263" y="165" width="76" height="125" rx="4" fill="var(--s-mid)"/>
+          <rect x="263" y="286" width="76" height="4" fill="var(--s-mid)"/>
+          <text x="301" y="157" class="val" text-anchor="middle">2,408</text>
+          <text x="301" y="311" class="axb" text-anchor="middle">Uncertainty</text>
+          <text x="301" y="326" class="note" text-anchor="middle">48.2% hit rate</text>
+
+          <!-- hunt 3140 -> h=163 -->
+          <rect x="376" y="127" width="76" height="163" rx="4" fill="var(--s-dark)"/>
+          <rect x="376" y="286" width="76" height="4" fill="var(--s-dark)"/>
+          <text x="414" y="119" class="val" text-anchor="middle">3,140</text>
+          <text x="414" y="311" class="axb" text-anchor="middle">Hunting</text>
+          <text x="414" y="326" class="note" text-anchor="middle">62.8% &#8212; ours</text>
+
+          <!-- base rate reference -->
+          <line x1="132" y1="204" x2="470" y2="204" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="470" y="200" class="note" text-anchor="end">base rate</text>
+
+          <line x1="132" y1="290" x2="470" y2="290" stroke="var(--axis)" stroke-width="1.5"/>
+
+          <!-- ============ RIGHT PANEL: F1 ============ -->
+          <text x="560" y="14" class="ttl">Resulting mean F1 (&#8220;Left&#8221;), seeds 1&#8211;3</text>
+          <text x="560" y="31" class="note">Final model, identical 2&#215; duplication in all three</text>
+
+          <g stroke="var(--grid)" stroke-width="1">
+            <line x1="676" y1="290" x2="1014" y2="290"/>
+            <line x1="676" y1="238" x2="1014" y2="238"/>
+            <line x1="676" y1="186" x2="1014" y2="186"/>
+            <line x1="676" y1="134" x2="1014" y2="134"/>
+            <line x1="676" y1="82"  x2="1014" y2="82"/>
+          </g>
+          <g class="ax" text-anchor="end">
+            <text x="668" y="294">0.58</text>
+            <text x="668" y="242">0.60</text>
+            <text x="668" y="190">0.62</text>
+            <text x="668" y="138">0.64</text>
+            <text x="668" y="86">0.66</text>
+          </g>
+
+          <!-- scale: 0.02 = 52px, base 0.58 at y=290 -->
+          <!-- random 0.6124 -> h = (0.6124-0.58)/0.02*52 = 84.2 -->
+          <rect x="694" y="206" width="76" height="84" rx="4" fill="var(--s-light)"/>
+          <rect x="694" y="286" width="76" height="4" fill="var(--s-light)"/>
+          <text x="732" y="198" class="val" text-anchor="middle">0.6124</text>
+          <text x="732" y="311" class="axb" text-anchor="middle">Random</text>
+
+          <!-- uncertainty 0.6316 -> h = 134.2 -->
+          <rect x="807" y="156" width="76" height="134" rx="4" fill="var(--s-mid)"/>
+          <rect x="807" y="286" width="76" height="4" fill="var(--s-mid)"/>
+          <text x="845" y="148" class="val" text-anchor="middle">0.6316</text>
+          <text x="845" y="311" class="axb" text-anchor="middle">Uncertainty</text>
+
+          <!-- hunt 0.6471 -> h = 174.5 -->
+          <rect x="920" y="115" width="76" height="175" rx="4" fill="var(--s-dark)"/>
+          <rect x="920" y="286" width="76" height="4" fill="var(--s-dark)"/>
+          <text x="958" y="107" class="val" text-anchor="middle">0.6471</text>
+          <text x="958" y="311" class="axb" text-anchor="middle">Hunting</text>
+
+          <line x1="676" y1="290" x2="1014" y2="290" stroke="var(--axis)" stroke-width="1.5"/>
+
+          <!-- delta callout -->
+          <path d="M 972 100 L 972 88 L 859 88 L 859 141" fill="none" stroke="var(--good)" stroke-width="1.5"/>
+          <text x="915" y="82" class="val" text-anchor="middle" fill="var(--good)">+0.0155 vs uncertainty</text>
+        </svg>
+      </div>
+    </div>
+    <div class="takeaway">
+      More positives &#8658; higher F1, monotonically. Uncertainty sampling spends the budget near
+      <i>P</i>=0.5, where labels are ambiguous but cheap to be wrong about &#8212; it buys <b>732 fewer positives</b>
+      and loses <b>0.0155</b> F1. When the metric is minority-class F1, the classic rule is the wrong rule.
+    </div>
+  </section>
+
+  <!-- ============================= SLIDE 3 ============================= -->
+  <section class="slide">
+    <div class="speaker">Lior</div>
+    <div class="num">3 / 6</div>
+    <h2>When to buy: 5 rounds beat one big order</h2>
+    <p class="sub">Retraining the scout between rounds sharpens its ranking &#8212; but each round
+      strips the pool of easy positives, and <b>the yield decays toward the base rate</b>.</p>
+    <div class="body">
+      <div class="fig">
+        <svg viewBox="0 0 1020 340" role="img" aria-label="Query precision per acquisition round falls from 79.5% in round 1 to 44.3% in round 5, converging toward the 33% pool base rate. Iterative 5x1000 buys 3140 positives versus 2900 for one-shot 1x5000.">
+          <text x="0" y="14" class="ttl">Query precision per round &#8212; the vein runs out</text>
+          <text x="0" y="31" class="note">Share of each 1,000-query batch that came back &#8220;Left&#8221;. Mean of seeds 1&#8211;3.</text>
+
+          <g stroke="var(--grid)" stroke-width="1">
+            <line x1="112" y1="272" x2="700" y2="272"/>
+            <line x1="112" y1="222" x2="700" y2="222"/>
+            <line x1="112" y1="172" x2="700" y2="172"/>
+            <line x1="112" y1="122" x2="700" y2="122"/>
+            <line x1="112" y1="72"  x2="700" y2="72"/>
+          </g>
+          <g class="ax" text-anchor="end">
+            <text x="104" y="276">30%</text>
+            <text x="104" y="226">45%</text>
+            <text x="104" y="176">60%</text>
+            <text x="104" y="126">75%</text>
+            <text x="104" y="76">90%</text>
+          </g>
+
+          <!-- base rate band: 33% -> y = 272 - (33-30)/15*50 = 262 -->
+          <line x1="112" y1="262" x2="700" y2="262" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="700" y="257" class="note" text-anchor="end">33% pool base rate &#8212; a blind query</text>
+
+          <!-- points: x = 112 + (r-1)*147 ; y = 272 - (p-30)/15*50 -->
+          <!-- r1 79.53 -> y=106.6 ; r2 78.20 -> y=111.0 ; r3 60.77 -> y=169.1 ; r4 51.23 -> y=200.9 ; r5 44.27 -> y=224.1 -->
+          <polyline points="112,106.6 259,111.0 406,169.1 553,200.9 700,224.1"
+                    fill="none" stroke="var(--accent)" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+          <g fill="var(--accent)" stroke="var(--surface-1)" stroke-width="2">
+            <circle cx="112" cy="106.6" r="5.5"/>
+            <circle cx="259" cy="111.0" r="5.5"/>
+            <circle cx="406" cy="169.1" r="5.5"/>
+            <circle cx="553" cy="200.9" r="5.5"/>
+            <circle cx="700" cy="224.1" r="5.5"/>
+          </g>
+          <g class="val" text-anchor="middle">
+            <text x="112" y="95">79.5%</text>
+            <text x="259" y="99">78.2%</text>
+            <text x="406" y="157">60.8%</text>
+            <text x="553" y="189">51.2%</text>
+            <text x="700" y="212">44.3%</text>
+          </g>
+          <g class="axb" text-anchor="middle">
+            <text x="112" y="294">Round 1</text>
+            <text x="259" y="294">Round 2</text>
+            <text x="406" y="294">Round 3</text>
+            <text x="553" y="294">Round 4</text>
+            <text x="700" y="294">Round 5</text>
+          </g>
+          <g class="note" text-anchor="middle">
+            <text x="112" y="309">795 pos</text>
+            <text x="259" y="309">782 pos</text>
+            <text x="406" y="309">608 pos</text>
+            <text x="553" y="309">512 pos</text>
+            <text x="700" y="309">443 pos</text>
+          </g>
+          <line x1="112" y1="272" x2="700" y2="272" stroke="var(--axis)" stroke-width="1.5"/>
+
+          <!-- ===== right: iterative vs one-shot ===== -->
+          <text x="775" y="14" class="ttl">5&#215;1,000 vs 1&#215;5,000</text>
+
+          <rect x="775" y="34" width="245" height="86" rx="8" fill="var(--plane)" stroke="var(--ring)"/>
+          <text x="791" y="56" class="axb">Iterative &#8212; 5 &#215; 1,000</text>
+          <text x="791" y="86" class="val" style="font-size:23px">3,140</text>
+          <text x="856" y="86" class="valm">positives</text>
+          <text x="791" y="108" class="valm">mean F1 <tspan class="val">0.6471</tspan></text>
+
+          <rect x="775" y="132" width="245" height="86" rx="8" fill="var(--plane)" stroke="var(--ring)"/>
+          <text x="791" y="154" class="axb">One-shot &#8212; 1 &#215; 5,000</text>
+          <text x="791" y="184" class="valm" style="font-size:23px;font-weight:650">2,900</text>
+          <text x="856" y="184" class="valm">positives</text>
+          <text x="791" y="206" class="valm">mean F1 <tspan class="valm" style="font-weight:650">0.6408</tspan></text>
+
+          <rect x="775" y="230" width="245" height="80" rx="8" fill="none" stroke="var(--good)" stroke-width="1.5"/>
+          <text x="791" y="252" class="val" fill="var(--good)">+240 positives (+8.3%)</text>
+          <text x="791" y="273" class="val" fill="var(--good)">+0.0063 F1</text>
+          <text x="791" y="293" class="note">Same budget. Same model. Only the</text>
+          <text x="791" y="308" class="note">feedback between rounds differs.</text>
+        </svg>
+      </div>
+    </div>
+    <div class="takeaway">
+      The first scout sees only 500 labels, so its ranking is noisy; each round it learns from hundreds
+      more positives and ranks better. That feedback is worth <b>+240 positives for free</b>. But precision
+      falling 79.5% &#8594; 44.3% is also the <b>warning</b>: by round 5 we are nearly guessing, which is exactly
+      why more budget would not save us (slide 5).
+    </div>
+  </section>
+
+  <!-- ============================= SLIDE 4 ============================= -->
+  <section class="slide">
+    <div class="speaker">Lior</div>
+    <div class="num">4 / 6</div>
+    <h2>The threshold is fixed &#8212; so we move the data instead</h2>
+    <p class="sub">Duplicating each known positive shifts the forest&#8217;s vote share toward &#8220;Left&#8221;.
+      It is the <b>only</b> recall lever we are allowed to pull.</p>
+    <div class="body">
+      <div class="fig">
+        <svg viewBox="0 0 1020 340" role="img" aria-label="Mean F1 versus positive duplication ratio. Rises sharply from 0.6293 at 1x to a peak 0.6471 at 2x, then stays flat within the noise band through 3x (0.6465) and dips to 0.6424 at 4x.">
+          <text x="0" y="14" class="ttl">Mean F1 vs positive-duplication ratio &#8212; seeds 1&#8211;3, identical labeled set</text>
+          <text x="0" y="31" class="note">Shaded band = &#177;0.005 measured noise floor</text>
+
+          <g stroke="var(--grid)" stroke-width="1">
+            <line x1="118" y1="288" x2="880" y2="288"/>
+            <line x1="118" y1="238" x2="880" y2="238"/>
+            <line x1="118" y1="188" x2="880" y2="188"/>
+            <line x1="118" y1="138" x2="880" y2="138"/>
+            <line x1="118" y1="88"  x2="880" y2="88"/>
+          </g>
+          <g class="ax" text-anchor="end">
+            <text x="110" y="292">0.625</text>
+            <text x="110" y="242">0.630</text>
+            <text x="110" y="192">0.635</text>
+            <text x="110" y="142">0.640</text>
+            <text x="110" y="92">0.645</text>
+          </g>
+          <text x="24" y="180" class="ax" transform="rotate(-90 24 180)" text-anchor="middle">Mean F1 (&#8220;Left&#8221;)</text>
+
+          <!-- y: F1 0.625 at y=288, 0.005 = 50px  => y = 288 - (f1-0.625)*10000 -->
+          <!-- x positions for dup 1.0,1.25,1.5,1.75,2.0,2.25,2.5,3.0,4.0 -->
+          <!-- noise band around peak 0.6471: 0.6421->y=116.0 , 0.6521->y=16 (clip to 8) -->
+          <rect x="118" y="26" width="762" height="50" fill="var(--accent)" opacity="0.09"/>
+          <line x1="118" y1="76" x2="880" y2="76" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4 4" opacity="0.5"/>
+          <text x="874" y="42" class="note" text-anchor="end" fill="var(--accent)">&#177;0.005 noise band around the peak</text>
+
+          <!-- data polyline -->
+          <!-- 1.00 0.6293 -> y=244.0 x=118 -->
+          <!-- 1.25 0.6372 -> y=165.0 x=182 -->
+          <!-- 1.50 0.6359 -> y=178.0 x=245 -->
+          <!-- 1.75 0.6388 -> y=149.0 x=309 -->
+          <!-- 2.00 0.6471 -> y=66.0  x=372 -->
+          <!-- 2.25 0.6410 -> y=127.0 x=436 -->
+          <!-- 2.50 0.6411 -> y=126.0 x=499 -->
+          <!-- 3.00 0.6465 -> y=72.0  x=626 -->
+          <!-- 4.00 0.6424 -> y=113.0 x=880 -->
+          <polyline points="118,244 182,165 245,178 309,149 372,66 436,127 499,126 626,72 880,113"
+                    fill="none" stroke="var(--accent)" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+          <g fill="var(--accent)" stroke="var(--surface-1)" stroke-width="2">
+            <circle cx="118" cy="244" r="5"/>
+            <circle cx="182" cy="165" r="5"/>
+            <circle cx="245" cy="178" r="5"/>
+            <circle cx="309" cy="149" r="5"/>
+            <circle cx="436" cy="127" r="5"/>
+            <circle cx="499" cy="126" r="5"/>
+            <circle cx="626" cy="72" r="5"/>
+            <circle cx="880" cy="113" r="5"/>
+          </g>
+          <!-- chosen point highlighted -->
+          <circle cx="372" cy="66" r="8.5" fill="var(--accent)" stroke="var(--surface-1)" stroke-width="2.5"/>
+
+          <!-- selective labels only -->
+          <text x="118" y="266" class="val" text-anchor="middle">0.6293</text>
+          <text x="372" y="52" class="val" text-anchor="middle">0.6471</text>
+          <text x="626" y="58" class="valm" text-anchor="middle">0.6465</text>
+          <text x="880" y="135" class="valm" text-anchor="middle">0.6424</text>
+
+          <!-- chosen annotation -->
+          <text x="372" y="34" class="val" text-anchor="middle" fill="var(--accent)">2&#215; &#8212; our choice</text>
+
+          <!-- gain arrow -->
+          <path d="M 130 240 L 130 210 L 360 210 L 360 76" fill="none" stroke="var(--good)" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <text x="290" y="204" class="val" text-anchor="middle" fill="var(--good)">+0.0178 &#8212; the biggest single win</text>
+
+          <!-- x axis -->
+          <line x1="118" y1="288" x2="880" y2="288" stroke="var(--axis)" stroke-width="1.5"/>
+          <g class="axb" text-anchor="middle">
+            <text x="118" y="308">1&#215;</text>
+            <text x="182" y="308">1.25&#215;</text>
+            <text x="245" y="308">1.5&#215;</text>
+            <text x="309" y="308">1.75&#215;</text>
+            <text x="372" y="308">2&#215;</text>
+            <text x="436" y="308">2.25&#215;</text>
+            <text x="499" y="308">2.5&#215;</text>
+            <text x="626" y="308">3&#215;</text>
+            <text x="880" y="308">4&#215;</text>
+          </g>
+          <text x="499" y="330" class="ax" text-anchor="middle">Copies of each known positive in the final training set</text>
+
+          <!-- side annotation -->
+          <rect x="900" y="150" width="120" height="120" rx="8" fill="var(--plane)" stroke="var(--ring)"/>
+          <text x="912" y="172" class="note">Precision</text>
+          <text x="912" y="188" class="valm">0.584</text>
+          <text x="912" y="212" class="note">Recall</text>
+          <text x="912" y="228" class="valm">0.725</text>
+          <text x="912" y="252" class="note">at 2&#215;, seeds 1&#8211;3</text>
+        </svg>
+      </div>
+    </div>
+    <div class="takeaway">
+      <b>Honest reading:</b> the 1&#215; &#8594; 2&#215; jump (<b>+0.0178</b>) is 3&#189;&#215; the noise floor &#8212; real.
+      But 2&#215; vs 3&#215; differ by <b>0.0006</b>, and the wobble at 2.25&#8211;2.5&#215; is the same size as the gap.
+      So we claim only what the data supports: <i>duplication matters; the exact ratio in [2, 3] does not.</i>
+      We picked 2&#215; as the flat, robust centre &#8212; not because 0.6471 &#8220;won&#8221;.
+    </div>
+  </section>
+
+  <!-- ============================= SLIDE 5 ============================= -->
+  <section class="slide">
+    <div class="speaker">Raz</div>
+    <div class="num">5 / 6</div>
+    <h2>32 configurations tried. None survived.</h2>
+    <p class="sub">We pre-declared a <b>+0.005 acceptance threshold</b> &#8212; the measured noise floor &#8212;
+      and held every idea to it. That is why <code>strategy.py</code> is still the simple one.</p>
+    <div class="body" style="gap:30px">
+      <div style="flex:1.15;display:flex;align-items:center">
+        <table class="t">
+          <thead>
+            <tr><th style="width:56%">Idea we tested</th><th>Mean F1</th><th class="d">&#916;</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><b>Ours &#8212; 5&#215;1,000 hunt + 2&#215;</b></td><td><b>0.6471</b></td><td class="d zero">&#8212;</td></tr>
+            <tr><td>Tiered hard-positive oversampling</td><td>0.6481</td><td class="d up">+0.0010</td></tr>
+            <tr><td>Graded batch schedule</td><td>0.6443</td><td class="d dn">&#8722;0.0027</td></tr>
+            <tr><td>Hard-negative upweighting</td><td>0.6434</td><td class="d dn">&#8722;0.0037</td></tr>
+            <tr><td>10 &#215; 500 rounds</td><td>0.6398</td><td class="d dn">&#8722;0.0072</td></tr>
+            <tr><td>Balanced scout</td><td>0.6379</td><td class="d dn">&#8722;0.0091</td></tr>
+            <tr><td>KMeans diversity in top-3&#215;</td><td>0.6375</td><td class="d dn">&#8722;0.0096</td></tr>
+            <tr><td>Cluster exploration (5%)</td><td>0.6345</td><td class="d dn">&#8722;0.0126</td></tr>
+            <tr><td>Uncertainty sampling</td><td>0.6316</td><td class="d dn">&#8722;0.0155</td></tr>
+            <tr><td>Random acquisition</td><td>0.6124</td><td class="d dn">&#8722;0.0347</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:11px">
+        <div class="keybox" style="border-left:3px solid var(--accent)">
+          <h3>Why the best &#8220;winner&#8221; was rejected</h3>
+          <p>Tiered oversampling gained <b>+0.0010</b> &#8212; one-fifth of the noise floor &#8212; and it
+            <b>hurt seed 1</b>. Adopting it would be fitting our own test set, not improving the method.</p>
+        </div>
+        <div class="keybox">
+          <h3>Two results that surprised us</h3>
+          <p><b>Query-by-committee &#8801; probability.</b> A forest already <i>is</i> a committee &#8212; its
+            <code>predict_proba</code> is the tree vote share. Identical ranking, zero gain.</p>
+          <p><b>Dropping hard negatives backfired</b> (0.647 &#8594; 0.627). Our labeled set is already
+            60% positive; those boundary negatives are the only thing teaching precision.</p>
+        </div>
+        <div class="keybox" style="border-left:3px solid var(--bad)">
+          <h3>Where the ceiling comes from</h3>
+          <p>Round-5 precision is <b>44%</b>, closing on the 33% base rate. The ~1,800 positives we never
+            catch look like &#8220;Stayed&#8221; <i>to this forest</i>. <b>Not our algorithm &#8212; the features.</b></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= SLIDE 6 ============================= -->
+  <section class="slide">
+    <div class="speaker">Lior</div>
+    <div class="num">6 / 6</div>
+    <h2>Result</h2>
+    <div class="body" style="gap:34px;align-items:center">
+      <div style="flex:1">
+        <div class="final">
+          <div class="big">0.6471</div>
+          <div class="cap">mean F1 (&#8220;Left&#8221;)<br>over seeds 1, 2, 3</div>
+        </div>
+        <table class="t" style="margin-top:16px">
+          <thead>
+            <tr><th>Seed</th><th>F1</th><th>Precision</th><th>Recall</th><th class="d">Runtime</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>0.6381</td><td>0.573</td><td>0.720</td><td class="d">19.3 s</td></tr>
+            <tr><td>2</td><td>0.6491</td><td>0.588</td><td>0.725</td><td class="d">31.3 s</td></tr>
+            <tr><td>3</td><td>0.6539</td><td>0.592</td><td>0.730</td><td class="d">34.5 s</td></tr>
+          </tbody>
+        </table>
+        <p class="sub" style="margin-top:12px;font-size:13px">
+          Budget used: exactly 5,000 unique IDs. Runtime cap 60 s/seed &#8212; worst case 34.5 s.
+          Guarantee line 0.55 cleared by <b>+0.097</b>.
+        </p>
+      </div>
+      <div style="flex:1">
+        <div class="keybox" style="border-left:3px solid var(--accent)">
+          <h3>What we would tell the next team</h3>
+          <p><b>Read the metric before writing the algorithm.</b> &#8220;F1 of a minority class at a
+            frozen threshold&#8221; quietly rewrites the problem from <i>&#8220;label the most informative
+            points&#8221;</i> to <i>&#8220;find the most positives and train on the right class ratio.&#8221;</i>
+            Every gain we made came from that sentence; every idea that ignored it lost.</p>
+          <p><b>Measure your noise floor first.</b> Ours was &#177;0.005 &#8212; from training row order alone.
+            Without it we would have &#8220;improved&#8221; the model nine times and shipped nothing but overfitting.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
