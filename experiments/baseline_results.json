@@ -1,0 +1,56 @@
+{
+  "experiment": "Baseline",
+  "configuration": "5 rounds x 1000, positive duplication 2x",
+  "seeds": [
+    {
+      "seed": 1,
+      "f1": 0.6381156316916489,
+      "precision": 0.573076923076923,
+      "recall": 0.7198067632850241,
+      "runtime_sec": 32.26183949999995,
+      "oracle_queries": 5000,
+      "oracle_positives": 3119,
+      "oracle_negatives": 1881,
+      "initial_positives": 158,
+      "initial_negatives": 342,
+      "before_duplication": {"positive": 3277, "negative": 2223, "positive_fraction": 0.5958181818181818},
+      "after_duplication": {"positive": 6554, "negative": 2223, "positive_fraction": 0.7467243933006722}
+    },
+    {
+      "seed": 2,
+      "f1": 0.6491164803461954,
+      "precision": 0.5878510777269759,
+      "recall": 0.7246376811594203,
+      "runtime_sec": 32.91436310000017,
+      "oracle_queries": 5000,
+      "oracle_positives": 3143,
+      "oracle_negatives": 1857,
+      "initial_positives": 162,
+      "initial_negatives": 338,
+      "before_duplication": {"positive": 3305, "negative": 2195, "positive_fraction": 0.600909090909091},
+      "after_duplication": {"positive": 6610, "negative": 2195, "positive_fraction": 0.750709823963657}
+    },
+    {
+      "seed": 3,
+      "f1": 0.6539293439077145,
+      "precision": 0.5920365535248042,
+      "recall": 0.7302737520128825,
+      "runtime_sec": 33.20007499999974,
+      "oracle_queries": 5000,
+      "oracle_positives": 3158,
+      "oracle_negatives": 1842,
+      "initial_positives": 152,
+      "initial_negatives": 348,
+      "before_duplication": {"positive": 3310, "negative": 2190, "positive_fraction": 0.6018181818181818},
+      "after_duplication": {"positive": 6620, "negative": 2190, "positive_fraction": 0.7514188422247446}
+    }
+  ],
+  "summary": {
+    "mean_f1": 0.6470538186485196,
+    "std_f1_population": 0.006618625409777577,
+    "mean_precision": 0.5843215181095677,
+    "mean_recall": 0.7249060654857756,
+    "mean_runtime_sec": 32.79209253333329,
+    "mean_oracle_positives": 3140.0
+  }
+}
