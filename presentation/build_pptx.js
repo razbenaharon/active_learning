@@ -8,11 +8,19 @@
  *
  *   NODE_PATH=<global node_modules> node build_pptx.js
  *
+ * Copy rule: the slides carry EVIDENCE, the speakers carry the ARGUMENT. Anything
+ * a presenter says out loud lives in addNotes, not on the slide. Nothing on a slide
+ * is a sentence the audience has to read while someone talks over it.
+ *
  * Layout note: no annotation is positioned relative to a chart's internal plot
- * area. That geometry is decided by PowerPoint at render time and cannot be
- * predicted here, so a "floating" reference line or per-bar caption would land
- * wherever it liked. Anything that must sit next to a value is either a real
- * chart series (see the base-rate line on slide 3) or a caption in normal flow.
+ * area. That geometry is decided by PowerPoint at render time, so reference lines
+ * are real series and callouts are captions in normal flow.
+ *
+ * PowerPoint-specific landmines, all found by opening the file, not by the XSD
+ * validator (which passes files PowerPoint refuses to open):
+ *   - lineDataSymbolLineSize must be an INTEGER; 1.5 corrupts the deck.
+ *   - lineDash: ["solid","dash"] corrupts the deck.
+ *   - invertedColors as a bare string renders bars near-black; colour per point.
  */
 
 const PptxGenJS = require("pptxgenjs");
@@ -36,7 +44,6 @@ const C = {
   ramp2: "C4761C",
   ramp3: "8A4A0B",
   good: "15803D",
-  bad: "B91C1C",
   onDark: "C3CEE4",
   onDark2: "8E9CB8",
   rule: "2C3A5C",
@@ -44,38 +51,51 @@ const C = {
 
 const F = { head: "Cambria", body: "Calibri" };
 
+// -------------------------------------------------- type scale (pt)
+// Sized for a screen recording: legible when the video is watched at half size.
+const T = {
+  title: 38,     // ~35 char budget at 10.4in in Cambria bold
+  sub: 20,
+  chartTitle: 16,
+  chartSub: 13,
+  take: 18,
+  body: 18,
+  lead: 22,
+  stat: 52,
+  cap: 13,
+  label: 14,
+  axis: 13,
+};
+
 // -------------------------------------------------- vertical rhythm (inches)
-// Slide is 13.333 x 7.5. Content spans x 0.72 -> 12.61 (0.72 margins).
+// Slide is 13.333 x 7.5. Content spans x 0.72 -> 12.61.
 const L = {
-  chipY: 0.5, // clears the 0.5in margin; sits right of the title box, never over it
-  titleY: 0.72, titleH: 0.75,
-  subY: 1.52, subH: 0.5,
-  cTitleY: 2.1, cTitleH: 0.24,
-  cSubY: 2.32, cSubH: 0.22,
-  chartY: 2.56, chartH: 3.2,
-  capY: 5.82, capH: 0.24,
+  chipY: 0.5,
+  titleY: 0.7, titleH: 0.85,
+  subY: 1.62, subH: 0.42,
+  cTitleY: 2.16, cTitleH: 0.3,
+  cSubY: 2.5, cSubH: 0.26,
+  chartY: 2.5, chartH: 3.3,
+  capY: 5.9, capH: 0.3,
   takeY: 6.3, takeH: 0.7,
-  left: 0.72, right: 12.61,
+  left: 0.72,
 };
 
 const data = {
   acq: { names: ["Random", "Uncertainty", "Hunting"], pos: [1652, 2408, 3140], f1: [0.6124, 0.6316, 0.6471] },
-  rounds: {
-    labels: ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5"],
-    prec: [79.5, 78.2, 60.8, 51.2, 44.3],
-  },
+  rounds: { labels: ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5"], prec: [79.5, 78.2, 60.8, 51.2, 44.3] },
   dup: {
     labels: ["1x", "1.25x", "1.5x", "1.75x", "2x", "2.25x", "2.5x", "3x", "4x"],
     f1: [0.6293, 0.6372, 0.6359, 0.6388, 0.6471, 0.641, 0.6411, 0.6465, 0.6424],
   },
   failed: [
-    ["Tiered hard-positive oversampling", 0.001],
-    ["Graded batch schedule", -0.0027],
-    ["Hard-negative upweighting", -0.0037],
+    ["Tiered oversampling", 0.001],
+    ["Graded batches", -0.0027],
+    ["Hard-negative upweight", -0.0037],
     ["10 x 500 rounds", -0.0072],
     ["Balanced scout", -0.0091],
     ["KMeans diversity", -0.0096],
-    ["Cluster exploration (5%)", -0.0126],
+    ["Cluster exploration", -0.0126],
     ["Uncertainty sampling", -0.0155],
     ["Random acquisition", -0.0347],
   ],
@@ -102,81 +122,85 @@ const slide = (dark) => {
 /** Speaker chip + slide number — the one motif repeated on every slide. */
 function chrome(s, who, n, dark) {
   s.addShape(pptx.ShapeType.roundRect, {
-    x: 11.25, y: L.chipY, w: 0.95, h: 0.3, rectRadius: 0.15,
+    x: 11.16, y: L.chipY, w: 1.04, h: 0.34, rectRadius: 0.17,
     fill: { color: dark ? C.accentLt : C.accent }, line: { type: "none" },
   });
   s.addText(who.toUpperCase(), {
-    x: 11.25, y: L.chipY, w: 0.95, h: 0.3, margin: 0,
-    fontFace: F.body, fontSize: 10, bold: true, charSpacing: 1,
+    x: 11.16, y: L.chipY, w: 1.04, h: 0.34, margin: 0,
+    fontFace: F.body, fontSize: 12, bold: true, charSpacing: 1,
     color: dark ? C.ground : C.white, align: "center", valign: "middle",
   });
   s.addText(`${n} / 6`, {
-    x: 12.32, y: L.chipY, w: 0.51, h: 0.3, margin: 0,
-    fontFace: F.body, fontSize: 10, color: dark ? C.onDark2 : C.muted,
+    x: 12.28, y: L.chipY, w: 0.55, h: 0.34, margin: 0,
+    fontFace: F.body, fontSize: 12, color: dark ? C.onDark2 : C.muted,
     align: "right", valign: "middle",
   });
 }
 
-// Titles are kept short enough to stay on one line at 30pt Cambria in 10.4in
-// (~50 chars). titleH still carries slack for a wrap rather than clipping.
+// Titles stay on one line: ~35 chars at 38pt Cambria bold in 10.4in.
 function title(s, txt, sub, dark) {
   s.addText(txt, {
     x: L.left, y: L.titleY, w: 10.4, h: L.titleH, margin: 0,
-    fontFace: F.head, fontSize: 30, bold: true,
+    fontFace: F.head, fontSize: T.title, bold: true,
     color: dark ? C.white : C.ink, valign: "top",
   });
   if (sub)
     s.addText(sub, {
       x: L.left, y: L.subY, w: 11.6, h: L.subH, margin: 0,
-      fontFace: F.body, fontSize: 14, color: dark ? C.onDark : C.ink2,
-      valign: "top",
+      fontFace: F.body, fontSize: T.sub, color: dark ? C.onDark : C.ink2, valign: "top",
     });
 }
 
 function chartHead(s, x, w, t, sub) {
   s.addText(t, {
     x, y: L.cTitleY, w, h: L.cTitleH, margin: 0,
-    fontFace: F.body, fontSize: 12, bold: true, color: C.ink,
+    fontFace: F.body, fontSize: T.chartTitle, bold: true, color: C.ink,
   });
   if (sub)
     s.addText(sub, {
       x, y: L.cSubY, w, h: L.cSubH, margin: 0,
-      fontFace: F.body, fontSize: 10.5, color: C.muted,
+      fontFace: F.body, fontSize: T.chartSub, color: C.muted,
     });
 }
 
-/** The repeated stat motif: big amber figure over a small caption. */
-function stat(s, x, y, w, big, cap, dark, size = 38) {
+/**
+ * The repeated stat motif: big amber figure over a short caption.
+ * Height is derived from the point size rather than hardcoded — at 52pt a fixed
+ * 0.82in box clipped the digits.
+ */
+function stat(s, x, y, w, big, cap, dark, size = T.stat, muteFig = false) {
+  const h = (size * 1.22) / 72 + 0.04;
   s.addText(big, {
-    x, y, w, h: 0.6, margin: 0,
+    x, y, w, h, margin: 0,
     fontFace: F.head, fontSize: size, bold: true,
-    color: dark ? C.accentLt : C.accent,
+    color: muteFig ? C.muted : dark ? C.accentLt : C.accent,
   });
   s.addText(cap, {
-    x, y: y + 0.58, w, h: 0.52, margin: 0,
-    fontFace: F.body, fontSize: 11, color: dark ? C.onDark : C.muted,
+    x, y: y + h, w, h: 0.3, margin: 0,
+    fontFace: F.body, fontSize: 13, color: dark ? C.onDark : C.muted,
   });
+  return y + h + 0.3;
 }
 
+/** One line only. ~95 char budget at 18pt Calibri in 11.43in. */
 function takeaway(s, runs) {
   s.addShape(pptx.ShapeType.roundRect, {
     x: L.left, y: L.takeY, w: 11.89, h: L.takeH, rectRadius: 0.06,
     fill: { color: C.tint }, line: { type: "none" },
   });
   s.addText(runs, {
-    x: 0.95, y: L.takeY, w: 11.43, h: L.takeH, margin: 0,
-    fontFace: F.body, fontSize: 12.5, color: C.ink, valign: "middle",
-    lineSpacingMultiple: 1.12,
+    x: 0.98, y: L.takeY, w: 11.37, h: L.takeH, margin: 0,
+    fontFace: F.body, fontSize: T.take, color: C.ink, valign: "middle",
   });
 }
 
 const axis = () => ({
-  catAxisLabelColor: C.ink2, catAxisLabelFontFace: F.body, catAxisLabelFontSize: 11,
-  valAxisLabelColor: C.muted, valAxisLabelFontFace: F.body, valAxisLabelFontSize: 10,
+  catAxisLabelColor: C.ink2, catAxisLabelFontFace: F.body, catAxisLabelFontSize: T.axis,
+  valAxisLabelColor: C.muted, valAxisLabelFontFace: F.body, valAxisLabelFontSize: 12,
   valGridLine: { color: C.hair, size: 1 },
   catGridLine: { style: "none" },
   showLegend: false, showTitle: false,
-  dataLabelFontFace: F.body, dataLabelFontSize: 11, dataLabelFontBold: true,
+  dataLabelFontFace: F.body, dataLabelFontSize: T.label, dataLabelFontBold: true,
   dataLabelColor: C.ink,
 });
 
@@ -185,82 +209,76 @@ const axis = () => ({
   const s = slide(true);
   chrome(s, "Raz", 1, true);
   s.addText("Project B  ·  Section A", {
-    x: L.left, y: 0.5, w: 6, h: 0.28, margin: 0,
-    fontFace: F.body, fontSize: 11.5, bold: true, charSpacing: 1.6, color: C.accentLt,
+    x: L.left, y: 0.5, w: 6, h: 0.32, margin: 0,
+    fontFace: F.body, fontSize: 14, bold: true, charSpacing: 1.6, color: C.accentLt,
   });
+  // 36pt, not 42: 'Maximise F1 on "Left".' is 22 glyphs of bold Cambria (~0.56em),
+  // which needs 7.2in at 42pt and only has 6.3in before the card at x=7.15.
   s.addText("Buy 5,000 labels.\nMaximise F1 on “Left”.", {
-    x: L.left, y: 1.0, w: 6.2, h: 1.5, margin: 0,
-    fontFace: F.head, fontSize: 34, bold: true, color: C.white,
-    lineSpacingMultiple: 1.06,
+    x: L.left, y: 1.15, w: 6.3, h: 1.55, margin: 0,
+    fontFace: F.head, fontSize: 36, bold: true, color: C.white, lineSpacingMultiple: 1.1,
   });
-  s.addText(
-    "An oracle sells labels one employee at a time. The classifier is fixed. " +
-      "The only real decision is which employees to pay for.",
-    { x: L.left, y: 2.56, w: 5.9, h: 0.7, margin: 0,
-      fontFace: F.body, fontSize: 13.5, color: C.onDark, lineSpacingMultiple: 1.2 }
-  );
 
   [
     ["Unlabeled pool", "14,900"],
-    ["Free initial labels", "500"],
-    ["Oracle budget", "5,000 unique IDs"],
+    ["Free labels", "500"],
+    ["Oracle budget", "5,000"],
     ["Classifier", "RandomForest — fixed"],
-    ["Metric", "F1 (“Left”), threshold 0.5"],
+    ["Metric", "F1 (“Left”) @ 0.5"],
   ].forEach(([k, v], i) => {
-    const y = 3.46 + i * 0.5;
-    s.addText(k, { x: L.left, y, w: 2.9, h: 0.4, margin: 0,
-      fontFace: F.body, fontSize: 12.5, color: C.onDark2, valign: "middle" });
-    s.addText(v, { x: 3.66, y, w: 2.96, h: 0.4, margin: 0,
-      fontFace: F.body, fontSize: 12.5, bold: true, color: C.white, valign: "middle" });
+    const y = 3.24 + i * 0.6;
+    s.addText(k, { x: L.left, y, w: 2.7, h: 0.46, margin: 0,
+      fontFace: F.body, fontSize: T.body, color: C.onDark2, valign: "middle" });
+    s.addText(v, { x: 3.46, y, w: 3.16, h: 0.46, margin: 0,
+      fontFace: F.body, fontSize: T.body, bold: true, color: C.white, valign: "middle" });
     s.addShape(pptx.ShapeType.line, {
-      x: L.left, y: y + 0.44, w: 5.9, h: 0, line: { color: C.rule, width: 0.75 },
+      x: L.left, y: y + 0.52, w: 5.9, h: 0, line: { color: C.rule, width: 0.75 },
     });
   });
 
   s.addShape(pptx.ShapeType.roundRect, {
-    x: 7.15, y: 1.0, w: 5.46, h: 5.55, rectRadius: 0.05,
+    x: 7.15, y: 1.15, w: 5.46, h: 5.4, rectRadius: 0.05,
     fill: { color: C.groundSoft }, line: { type: "none" },
   });
   s.addText("THE METRIC DICTATES THE STRATEGY", {
-    x: 7.47, y: 1.3, w: 4.82, h: 0.3, margin: 0,
-    fontFace: F.body, fontSize: 11, bold: true, charSpacing: 1.1, color: C.accentLt,
+    x: 7.52, y: 1.5, w: 4.8, h: 0.32, margin: 0,
+    fontFace: F.body, fontSize: 13, bold: true, charSpacing: 1.1, color: C.accentLt,
   });
-  s.addText(
-    [
-      { text: "Only the positive class scores. ", options: { bold: true, color: C.white } },
-      { text: "True negatives contribute nothing to F1, so a label is worth buying mainly if it is — or teaches us about — a “Left”.", options: { color: C.onDark } },
-    ],
-    { x: 7.47, y: 1.74, w: 4.82, h: 1.2, margin: 0,
-      fontFace: F.body, fontSize: 13, lineSpacingMultiple: 1.22 }
-  );
-  s.addText(
-    [
-      { text: "The 0.5 threshold is welded shut. ", options: { bold: true, color: C.white } },
-      { text: "The grader calls predict(). We cannot tune it, so the only lever on precision/recall is what the forest is trained on.", options: { color: C.onDark } },
-    ],
-    { x: 7.47, y: 3.04, w: 4.82, h: 1.2, margin: 0,
-      fontFace: F.body, fontSize: 13, lineSpacingMultiple: 1.22 }
-  );
-  s.addText(
-    [
-      { text: "Those two facts produced our two design choices: ", options: { color: C.onDark } },
-      { text: "hunt positives", options: { bold: true, color: C.accentLt } },
-      { text: ", then ", options: { color: C.onDark } },
-      { text: "reweight by duplication", options: { bold: true, color: C.accentLt } },
-      { text: ".", options: { color: C.onDark } },
-    ],
-    { x: 7.47, y: 4.36, w: 4.82, h: 0.95, margin: 0,
-      fontFace: F.body, fontSize: 13, lineSpacingMultiple: 1.22 }
-  );
-  s.addText("Raz Ben Aharon   ·   Lior Malachi", {
-    x: 7.47, y: 5.78, w: 4.82, h: 0.3, margin: 0,
-    fontFace: F.body, fontSize: 11.5, color: C.onDark2,
+
+  s.addText("Only the positive class scores.", {
+    x: 7.52, y: 2.06, w: 4.8, h: 0.4, margin: 0,
+    fontFace: F.body, fontSize: T.lead, bold: true, color: C.white,
   });
+  s.addText("True negatives add nothing to F1.", {
+    x: 7.52, y: 2.5, w: 4.8, h: 0.36, margin: 0,
+    fontFace: F.body, fontSize: T.body, color: C.onDark,
+  });
+
+  s.addText("The 0.5 threshold is frozen.", {
+    x: 7.52, y: 3.32, w: 4.8, h: 0.4, margin: 0,
+    fontFace: F.body, fontSize: T.lead, bold: true, color: C.white,
+  });
+  s.addText("The grader calls predict(). The only\nlever left is what we train on.", {
+    x: 7.52, y: 3.76, w: 4.8, h: 0.7, margin: 0,
+    fontFace: F.body, fontSize: T.body, color: C.onDark, lineSpacingMultiple: 1.16,
+  });
+
+  s.addShape(pptx.ShapeType.line, {
+    x: 7.52, y: 4.78, w: 4.8, h: 0, line: { color: C.rule, width: 1 },
+  });
+  s.addText("So: hunt positives,\nthen reweight.", {
+    x: 7.52, y: 5.0, w: 4.8, h: 0.86, margin: 0,
+    fontFace: F.body, fontSize: 24, bold: true, color: C.accentLt, lineSpacingMultiple: 1.12,
+  });
+  s.addText("Raz Ben Aharon  ·  Lior Malachi", {
+    x: 7.52, y: 6.02, w: 4.8, h: 0.32, margin: 0,
+    fontFace: F.body, fontSize: 13, color: C.onDark2,
+  });
+
   s.addNotes(
     "Fourteen thousand nine hundred unlabeled employees. Five hundred free labels, five " +
       "thousand we can buy, and a Random Forest we're not allowed to change. Two facts " +
-      "decided everything: only the positive class scores, and the half threshold is " +
-      "frozen.  [~15s]"
+      "decided everything: only the positive class scores, and the half threshold is frozen.  [~15s]"
   );
 }
 
@@ -268,15 +286,9 @@ const axis = () => ({
 {
   const s = slide(false);
   chrome(s, "Raz", 2, false);
-  title(
-    s,
-    "Hunt positives, don’t refine the boundary",
-    "Same 5,000-query budget, three acquisition rules. Textbook uncertainty sampling loses to simply asking for the most-likely positives.",
-    false
-  );
+  title(s, "Hunt positives, don’t refine", "Same 5,000-query budget. Three acquisition rules.", false);
 
-  chartHead(s, L.left, 6.0, "True positives bought with 5,000 queries",
-    "Hit rate — Random 33.0% (= base rate) · Uncertainty 48.2% · Hunting 62.8%");
+  chartHead(s, L.left, 5.9, "True positives bought");
   s.addChart(
     pptx.ChartType.bar,
     [{ name: "Positives bought", labels: data.acq.names, values: data.acq.pos }],
@@ -288,13 +300,12 @@ const axis = () => ({
       ...axis(),
     }
   );
-  s.addText("A blind 5,000 queries returns ~1,650 — hunting nearly doubles the yield.", {
-    x: L.left, y: L.capY, w: 5.8, h: L.capH, margin: 0,
-    fontFace: F.body, fontSize: 10.5, color: C.muted, italic: true,
+  s.addText("Hit rate  33.0%  ·  48.2%  ·  62.8%", {
+    x: L.left, y: L.capY, w: 5.9, h: L.capH, margin: 0,
+    fontFace: F.body, fontSize: T.cap, color: C.muted,
   });
 
-  chartHead(s, 6.81, 5.8, "Resulting mean F1 (“Left”), seeds 1–3",
-    "Final model, identical 2x duplication in all three");
+  chartHead(s, 6.81, 5.8, "Resulting mean F1 (“Left”)");
   s.addChart(
     pptx.ChartType.bar,
     [{ name: "Mean F1", labels: data.acq.names, values: data.acq.f1 }],
@@ -310,27 +321,21 @@ const axis = () => ({
   s.addText(
     [
       { text: "+0.0155", options: { bold: true, color: C.good } },
-      { text: " over uncertainty sampling  ·  ", options: { color: C.muted } },
-      { text: "+0.0347", options: { bold: true, color: C.good } },
-      { text: " over random", options: { color: C.muted } },
+      { text: " vs uncertainty", options: { color: C.muted } },
     ],
-    { x: 6.81, y: L.capY, w: 5.8, h: L.capH, margin: 0, fontFace: F.body, fontSize: 10.5 }
+    { x: 6.81, y: L.capY, w: 5.8, h: L.capH, margin: 0, fontFace: F.body, fontSize: T.cap }
   );
 
   takeaway(s, [
-    { text: "More positives ⇒ higher F1, monotonically. ", options: { bold: true } },
-    { text: "Uncertainty sampling spends the budget near P=0.5, where labels are ambiguous but cheap to be wrong about — it buys " },
-    { text: "732 fewer positives", options: { bold: true } },
-    { text: " and loses " },
-    { text: "0.0155", options: { bold: true } },
-    { text: " F1. When the metric is minority-class F1, the classic rule is the wrong rule." },
+    { text: "More positives ⇒ higher F1. ", options: { bold: true } },
+    { text: "Uncertainty sampling buys 732 fewer — and loses 0.0155." },
   ]);
   s.addNotes(
     "So we asked what a label is worth. Random sampling buys sixteen-fifty positives — the " +
-      "base rate. Textbook uncertainty sampling buys twenty-four hundred. Just asking for " +
-      "the most-likely positives buys thirty-one-forty, and wins by point-oh-one-five F1. " +
-      "When the metric is minority-class F1, refining the boundary is the wrong instinct.  " +
-      "[~20s]   Handoff: “Lior — so when do we spend it?”"
+      "base rate. Textbook uncertainty sampling buys twenty-four hundred. Just asking for the " +
+      "most-likely positives buys thirty-one-forty, and wins by point-oh-one-five F1. When the " +
+      "metric is minority-class F1, refining the boundary is the wrong instinct.  [~20s]   " +
+      "Handoff: “Lior — so when do we spend it?”"
   );
 }
 
@@ -338,21 +343,12 @@ const axis = () => ({
 {
   const s = slide(false);
   chrome(s, "Lior", 3, false);
-  title(
-    s,
-    "5 rounds beat one big order",
-    "Retraining the scout between rounds sharpens its ranking — but each round strips the pool of easy positives, and the yield decays toward the base rate.",
-    false
-  );
+  title(s, "5 rounds beat one big order", "Retraining the scout between rounds sharpens its ranking.", false);
 
-  chartHead(s, L.left, 8.4, "Query precision per round — the vein runs out",
-    "Share of each 1,000-query batch that came back “Left”. Mean of seeds 1–3.");
-  // Base rate is a real series, not a floating overlay, so it lands on the axis
-  // correctly. Built as a combo (same axes, no secondary) purely so the flat
-  // reference line can carry showValue:false — a chart-level showValue would stamp
-  // "33.0%" on all five of its points, which is noise.
-  // NB: no per-series lineDash. `lineDash: ["solid","dash"]` builds and passes the
-  // XSD, but PowerPoint refuses to open the file. Colour + legend carry identity.
+  chartHead(s, L.left, 8.4, "Query precision per round — the vein runs out");
+  // Base rate is a real series, not a floating overlay. Built as a combo (same
+  // axes, no secondary) so the flat reference can carry showValue:false — a
+  // chart-level showValue would stamp "33.0%" on all five of its points.
   s.addChart(
     [
       {
@@ -360,21 +356,17 @@ const axis = () => ({
         data: [{ name: "Batch precision", labels: data.rounds.labels, values: data.rounds.prec }],
         options: {
           chartColors: [C.accent],
-          lineSize: 3, lineDataSymbol: "circle", lineDataSymbolSize: 9,
-          lineDataSymbolLineColor: C.white, lineDataSymbolLineSize: 2, // MUST be an integer: 1.5 emits XML PowerPoint refuses to open
+          lineSize: 3, lineDataSymbol: "circle", lineDataSymbolSize: 10,
+          lineDataSymbolLineColor: C.white, lineDataSymbolLineSize: 2, // MUST be an integer
           showValue: true, dataLabelPosition: "t", dataLabelFormatCode: '0.0"%"',
-          dataLabelFontFace: F.body, dataLabelFontSize: 11, dataLabelFontBold: true,
+          dataLabelFontFace: F.body, dataLabelFontSize: T.label, dataLabelFontBold: true,
           dataLabelColor: C.ink,
         },
       },
       {
         type: pptx.ChartType.line,
         data: [{ name: "Pool base rate (33%)", labels: data.rounds.labels, values: [33, 33, 33, 33, 33] }],
-        options: {
-          chartColors: [C.muted],
-          lineSize: 2, lineDataSymbol: "none",
-          showValue: false,
-        },
+        options: { chartColors: [C.muted], lineSize: 2, lineDataSymbol: "none", showValue: false },
       },
     ],
     {
@@ -383,60 +375,44 @@ const axis = () => ({
       valAxisLabelFormatCode: '0"%"',
       ...axis(),
       showLegend: true, legendPos: "b", legendFontFace: F.body,
-      legendFontSize: 10.5, legendColor: C.ink2,
+      legendFontSize: T.cap, legendColor: C.ink2,
     }
   );
-  s.addText("Positives bought per round: 795 · 782 · 608 · 512 · 443", {
-    x: L.left, y: L.capY, w: 8.4, h: L.capH, margin: 0,
-    fontFace: F.body, fontSize: 10.5, color: C.muted, italic: true,
-  });
 
   s.addShape(pptx.ShapeType.roundRect, {
-    x: 9.35, y: L.chartY, w: 3.26, h: 1.5, rectRadius: 0.05,
+    x: 9.35, y: L.chartY, w: 3.26, h: 1.6, rectRadius: 0.05,
     fill: { color: C.tint }, line: { type: "none" },
   });
   s.addText("Iterative — 5 x 1,000", {
-    x: 9.6, y: 2.7, w: 2.76, h: 0.26, margin: 0,
-    fontFace: F.body, fontSize: 11.5, bold: true, color: C.ink2,
+    x: 9.62, y: 2.64, w: 2.72, h: 0.28, margin: 0,
+    fontFace: F.body, fontSize: 14, bold: true, color: C.ink2,
   });
-  stat(s, 9.6, 2.96, 2.76, "3,140", "positives  ·  mean F1 0.6471", false);
+  stat(s, 9.62, 2.94, 2.72, "3,140", "positives  ·  F1 0.6471", false, 44);
 
   s.addShape(pptx.ShapeType.roundRect, {
-    x: 9.35, y: 4.2, w: 3.26, h: 1.5, rectRadius: 0.05,
+    x: 9.35, y: 4.24, w: 3.26, h: 1.6, rectRadius: 0.05,
     fill: { color: C.tint }, line: { type: "none" },
   });
   s.addText("One-shot — 1 x 5,000", {
-    x: 9.6, y: 4.34, w: 2.76, h: 0.26, margin: 0,
-    fontFace: F.body, fontSize: 11.5, bold: true, color: C.ink2,
+    x: 9.62, y: 4.38, w: 2.72, h: 0.28, margin: 0,
+    fontFace: F.body, fontSize: 14, bold: true, color: C.ink2,
   });
-  s.addText("2,900", {
-    x: 9.6, y: 4.6, w: 2.76, h: 0.6, margin: 0,
-    fontFace: F.head, fontSize: 38, bold: true, color: C.muted,
+  stat(s, 9.62, 4.68, 2.72, "2,900", "positives  ·  F1 0.6408", false, 44, true);
+
+  s.addText("+240 positives, free", {
+    x: 9.35, y: 5.94, w: 3.26, h: 0.32, margin: 0,
+    fontFace: F.body, fontSize: 16, bold: true, color: C.good,
   });
-  s.addText("positives  ·  mean F1 0.6408", {
-    x: 9.6, y: 5.18, w: 2.76, h: 0.44, margin: 0,
-    fontFace: F.body, fontSize: 11, color: C.muted,
-  });
-  s.addText(
-    [
-      { text: "+240 positives (+8.3%)  ·  +0.0063 F1\n", options: { bold: true, color: C.good, fontSize: 12.5 } },
-      { text: "Same budget. Only the feedback differs.", options: { color: C.ink2, fontSize: 10.5 } },
-    ],
-    { x: 9.35, y: 5.74, w: 3.26, h: 0.52, margin: 0, fontFace: F.body, lineSpacingMultiple: 1.12 }
-  );
 
   takeaway(s, [
-    { text: "The first scout sees only 500 labels, so its ranking is noisy; each round it learns from hundreds more positives and ranks better — worth " },
-    { text: "+240 positives for free", options: { bold: true } },
-    { text: ". But precision falling 79.5% → 44.3% is also the " },
-    { text: "warning", options: { bold: true } },
-    { text: ": by round 5 we are nearly guessing, which is why more budget would not save us." },
+    { text: "But the yield decays 79.5% → 44.3%, toward the 33% base rate. ", options: {} },
+    { text: "More budget would not save us.", options: { bold: true } },
   ]);
   s.addNotes(
     "In five rounds, not one. Retraining the scout between rounds buys two hundred forty " +
       "extra positives for free. But look at the decay — eighty percent yield in round one, " +
-      "forty-four by round five, closing on the thirty-three percent base rate. We're " +
-      "running out of vein.  [~18s]"
+      "forty-four by round five, closing on the thirty-three percent base rate. We're running " +
+      "out of vein.  [~18s]"
   );
 }
 
@@ -444,58 +420,49 @@ const axis = () => ({
 {
   const s = slide(false);
   chrome(s, "Lior", 4, false);
-  title(
-    s,
-    "The threshold is frozen — so move the data",
-    "Duplicating each known positive shifts the forest’s vote share toward “Left”. It is the only recall lever we are allowed to pull.",
-    false
-  );
+  title(s, "Frozen threshold? Move the data", "Duplicating positives is the only recall lever we may pull.", false);
 
-  chartHead(s, L.left, 8.5, "Mean F1 vs positive-duplication ratio — seeds 1–3",
-    "Identical labeled set at every point; only the final training composition changes.");
+  chartHead(s, L.left, 8.6, "Mean F1 vs positive-duplication ratio");
   s.addChart(
     pptx.ChartType.line,
     [{ name: "Mean F1", labels: data.dup.labels, values: data.dup.f1 }],
     {
-      x: 0.6, y: L.chartY, w: 8.6, h: 3.5,
+      x: 0.6, y: L.chartY, w: 8.6, h: 3.62,
       chartColors: [C.accent],
-      lineSize: 3, lineDataSymbol: "circle", lineDataSymbolSize: 9,
-      lineDataSymbolLineColor: C.white, lineDataSymbolLineSize: 2, // MUST be an integer: 1.5 emits XML PowerPoint refuses to open
+      lineSize: 3, lineDataSymbol: "circle", lineDataSymbolSize: 10,
+      lineDataSymbolLineColor: C.white, lineDataSymbolLineSize: 2, // MUST be an integer
       showValue: true, dataLabelPosition: "t", dataLabelFormatCode: "0.0000",
       valAxisMinVal: 0.625, valAxisMaxVal: 0.65, valAxisMajorUnit: 0.005,
       valAxisLabelFormatCode: "0.000",
-      valAxisTitle: "Mean F1 (“Left”)", showValAxisTitle: true, valAxisTitleColor: C.muted,
-      valAxisTitleFontFace: F.body, valAxisTitleFontSize: 10.5,
-      catAxisTitle: "Copies of each known positive in the final training set",
-      showCatAxisTitle: true, catAxisTitleColor: C.muted,
-      catAxisTitleFontFace: F.body, catAxisTitleFontSize: 10.5,
       ...axis(),
     }
   );
+  s.addText("Copies of each known positive in the final training set", {
+    x: L.left, y: 6.0, w: 8.6, h: 0.3, margin: 0,
+    fontFace: F.body, fontSize: T.cap, color: C.muted,
+  });
 
+  // 40pt, not 52: "+0.0178" is 7 glyphs of bold Cambria (~0.56em each) and wrapped
+  // inside the 2.66in card at the larger size.
   s.addShape(pptx.ShapeType.roundRect, {
-    x: 9.45, y: L.chartY, w: 3.16, h: 1.62, rectRadius: 0.05,
+    x: 9.45, y: L.chartY, w: 3.16, h: 1.6, rectRadius: 0.05,
     fill: { color: C.tint }, line: { type: "none" },
   });
-  stat(s, 9.7, 2.74, 2.66, "+0.0178", "1x → 2x — the biggest single win in the project", false);
+  stat(s, 9.62, 2.74, 2.9, "+0.0178", "1x → 2x — our biggest win", false, 40);
 
-  s.addText(
-    [
-      { text: "…but 2x vs 3x = 0.0006\n", options: { bold: true, color: C.ink, fontSize: 13 } },
-      { text: "Our noise floor is ±0.005, from training row order alone. The dip at 2.25–2.5x is larger than the gap between the two best points. That is a noise pattern, not a peak.", options: { color: C.ink2, fontSize: 11.5 } },
-    ],
-    { x: 9.45, y: 4.4, w: 3.16, h: 1.55, margin: 0, fontFace: F.body, lineSpacingMultiple: 1.18 }
-  );
-  s.addText("At 2x — precision 0.584  ·  recall 0.725", {
-    x: 9.45, y: 6.0, w: 3.16, h: 0.24, margin: 0,
-    fontFace: F.body, fontSize: 10.5, color: C.muted,
+  s.addShape(pptx.ShapeType.roundRect, {
+    x: 9.45, y: 4.24, w: 3.16, h: 1.7, rectRadius: 0.05,
+    fill: { color: C.tint }, line: { type: "none" },
+  });
+  stat(s, 9.62, 4.5, 2.9, "0.0006", "2x vs 3x — the gap", false, 40, true);
+  s.addText("inside our ±0.005 noise floor", {
+    x: 9.62, y: 5.56, w: 2.9, h: 0.3, margin: 0,
+    fontFace: F.body, fontSize: 14, bold: true, color: C.ink,
   });
 
   takeaway(s, [
-    { text: "Honest reading: ", options: { bold: true } },
-    { text: "the 1x → 2x jump (+0.0178) is 3½× the noise floor — real. But 2x and 3x differ by 0.0006, so we claim only what the data supports: " },
-    { text: "duplication matters; the exact ratio in [2, 3] does not.", options: { bold: true, italic: true } },
-    { text: " We picked 2x as the flat, robust centre — not because 0.6471 “won”." },
+    { text: "Duplication matters. " },
+    { text: "The exact ratio in [2, 3] does not — that gap is noise.", options: { bold: true } },
   ]);
   s.addNotes(
     "Now the threshold. It's frozen, so we move the data instead: duplicate every positive " +
@@ -509,26 +476,17 @@ const axis = () => ({
 {
   const s = slide(false);
   chrome(s, "Raz", 5, false);
-  title(
-    s,
-    "32 configurations tried. None survived.",
-    "We pre-declared a +0.005 acceptance threshold — the measured noise floor — and held every idea to it. That is why strategy.py is still the simple one.",
-    false
-  );
+  title(s, "32 configurations. None survived.", "Pre-declared bar: +0.005 — our measured noise floor.", false);
 
-  chartHead(s, L.left, 7.9, "Change in mean F1 vs our 0.6471 — every idea we tested",
-    "Bars right of zero beat us; only one does, and by less than the noise floor.");
+  chartHead(s, L.left, 7.9, "Change in mean F1 vs our 0.6471");
   s.addChart(
     pptx.ChartType.bar,
     [{ name: "Delta vs our 0.6471", labels: data.failed.map((f) => f[0]), values: data.failed.map((f) => f[1]) }],
     {
-      x: 0.6, y: L.chartY, w: 8.0, h: 3.6,
+      x: 0.6, y: L.chartY, w: 8.0, h: 3.9,
       barDir: "bar",
       // Per-point colours in DATA order: the one idea that beat us is amber, the
-      // eight that lost are neutral. Colour encodes "cleared zero or not", which is
-      // a real distinction, not rank.
-      // NB: `invertedColors` as a bare string renders every bar near-black — it
-      // wants an array. Colouring per point instead sidesteps it entirely.
+      // eight that lost are neutral. `invertedColors` as a string renders black.
       varyColors: true,
       chartColors: [C.accent, ...Array(8).fill(C.muted)],
       barGapWidthPct: 45,
@@ -536,61 +494,55 @@ const axis = () => ({
       valAxisMinVal: -0.04, valAxisMaxVal: 0.005, valAxisMajorUnit: 0.01,
       valAxisLabelFormatCode: "0.000",
       catAxisOrderReverse: true,
-      // With negative bars the category labels default to the zero line, landing on
-      // top of the bars. "low" parks them at the axis edge.
+      // Negative bars push category labels onto the bars; "low" parks them at the edge.
       catAxisLabelPos: "low",
       ...axis(),
     }
   );
 
   s.addShape(pptx.ShapeType.roundRect, {
-    x: 8.85, y: L.chartY, w: 3.76, h: 1.9, rectRadius: 0.05,
+    x: 8.85, y: L.chartY, w: 3.76, h: 2.24, rectRadius: 0.05,
     fill: { color: C.tint }, line: { type: "none" },
   });
-  s.addText("WHY THE BEST “WINNER” WAS REJECTED", {
-    x: 9.1, y: 2.74, w: 3.26, h: 0.26, margin: 0,
-    fontFace: F.body, fontSize: 10, bold: true, charSpacing: 0.8, color: C.accent,
+  s.addText("THE “WINNER” WE REJECTED", {
+    x: 9.15, y: 2.7, w: 3.2, h: 0.3, margin: 0,
+    fontFace: F.body, fontSize: 13, bold: true, charSpacing: 0.8, color: C.accent,
   });
-  s.addText(
-    [
-      { text: "Tiered oversampling gained +0.0010 — one-fifth of the noise floor — and it ", options: { color: C.ink } },
-      { text: "hurt seed 1", options: { bold: true, color: C.ink } },
-      { text: ". Adopting it would be fitting our own test set, not improving the method.", options: { color: C.ink } },
-    ],
-    { x: 9.1, y: 3.04, w: 3.26, h: 1.3, margin: 0,
-      fontFace: F.body, fontSize: 12, lineSpacingMultiple: 1.18 }
-  );
+  s.addText("+0.0010 — and it hurt seed 1.", {
+    x: 9.15, y: 3.08, w: 3.2, h: 0.82, margin: 0,
+    fontFace: F.body, fontSize: T.lead, bold: true, color: C.ink, lineSpacingMultiple: 1.14,
+  });
+  s.addText("One-fifth of the noise floor. Adopting it fits our test set, not the problem.", {
+    x: 9.15, y: 3.92, w: 3.2, h: 0.78, margin: 0,
+    fontFace: F.body, fontSize: 14, color: C.ink2, lineSpacingMultiple: 1.14,
+  });
 
   s.addShape(pptx.ShapeType.roundRect, {
-    x: 8.85, y: 4.6, w: 3.76, h: 2.4, rectRadius: 0.05,
+    x: 8.85, y: 4.9, w: 3.76, h: 1.66, rectRadius: 0.05,
     fill: { color: C.tint }, line: { type: "none" },
   });
-  s.addText("TWO RESULTS THAT SURPRISED US", {
-    x: 9.1, y: 4.78, w: 3.26, h: 0.26, margin: 0,
-    fontFace: F.body, fontSize: 10, bold: true, charSpacing: 0.8, color: C.accent,
+  s.addText("THE SURPRISE", {
+    x: 9.15, y: 5.06, w: 3.2, h: 0.3, margin: 0,
+    fontFace: F.body, fontSize: 13, bold: true, charSpacing: 0.8, color: C.accent,
   });
-  s.addText(
-    [
-      { text: "Query-by-committee ≡ probability. ", options: { bold: true, color: C.ink } },
-      { text: "A forest already is a committee — predict_proba is the tree vote share. Identical ranking, zero gain.\n", options: { color: C.ink2 } },
-      { text: "Dropping hard negatives backfired ", options: { bold: true, color: C.ink } },
-      { text: "(0.647 → 0.627). Our labeled set is already 60% positive; those boundary negatives are the only thing teaching precision.", options: { color: C.ink2 } },
-    ],
-    { x: 9.1, y: 5.08, w: 3.26, h: 1.8, margin: 0,
-      fontFace: F.body, fontSize: 11, lineSpacingMultiple: 1.14 }
-  );
+  s.addText("Query-by-committee ≡ probability.", {
+    x: 9.15, y: 5.4, w: 3.2, h: 0.62, margin: 0,
+    fontFace: F.body, fontSize: T.body, bold: true, color: C.ink, lineSpacingMultiple: 1.14,
+  });
+  s.addText("A forest already is a committee.", {
+    x: 9.15, y: 6.06, w: 3.2, h: 0.34, margin: 0,
+    fontFace: F.body, fontSize: 14, color: C.ink2,
+  });
 
-  s.addText(
-    "Where the ceiling comes from: round-5 precision is 44%, closing on the 33% base rate. " +
-      "The ~1,800 positives we never catch look like “Stayed” to this forest — not our algorithm, the features.",
-    { x: L.left, y: 6.42, w: 7.9, h: 0.56, margin: 0,
-      fontFace: F.body, fontSize: 11, color: C.muted, italic: true, lineSpacingMultiple: 1.14 }
-  );
+  s.addText("Ceiling: round-5 precision 44% ≈ the 33% base rate. Not our algorithm — the features.", {
+    x: L.left, y: 6.62, w: 7.9, h: 0.34, margin: 0,
+    fontFace: F.body, fontSize: T.cap, color: C.muted, italic: true,
+  });
   s.addNotes(
     "Thirty-two configurations. We pre-declared a plus-point-oh-oh-five bar — our measured " +
-      "noise — and nothing cleared it. Our best candidate gained point-oh-oh-one and hurt " +
-      "seed one, so we rejected it. Query-by-committee turned out identical to probability: " +
-      "a forest already is a committee.  [~17s]"
+      "noise — and nothing cleared it. Our best candidate gained point-oh-oh-one and hurt seed " +
+      "one, so we rejected it. Query-by-committee turned out identical to probability: a forest " +
+      "already is a committee.  [~17s]"
   );
 }
 
@@ -600,68 +552,72 @@ const axis = () => ({
   chrome(s, "Lior", 6, true);
   title(s, "Result", null, true);
 
-  // Caption sits BELOW the figure, not beside it. Bold Cambria digits are wider than
-  // they look (~0.55em, not 0.5em) — at 80pt in a 3.5in box "0.6471" wrapped and
-  // dropped its last digit onto the table. Stacking removes the width constraint.
+  // Caption sits BELOW the figure. Bold Cambria digits are ~0.55em, so at 80pt in a
+  // 3.5in box "0.6471" wrapped and dropped a digit onto the table.
   s.addText("0.6471", {
-    x: L.left, y: 1.55, w: 5.0, h: 1.35, margin: 0,
-    fontFace: F.head, fontSize: 72, bold: true, color: C.accentLt,
+    x: L.left, y: 1.62, w: 5.4, h: 1.45, margin: 0,
+    fontFace: F.head, fontSize: 80, bold: true, color: C.accentLt,
   });
-  s.addText("mean F1 (“Left”)  ·  over seeds 1, 2, 3", {
-    x: L.left, y: 2.92, w: 5.0, h: 0.34, margin: 0,
-    fontFace: F.body, fontSize: 13.5, color: C.onDark,
+  s.addText("mean F1 (“Left”)  ·  seeds 1, 2, 3", {
+    x: L.left, y: 3.08, w: 5.4, h: 0.4, margin: 0,
+    fontFace: F.body, fontSize: T.body, color: C.onDark,
   });
 
   s.addTable(
     [
       ["Seed", "F1", "Precision", "Recall", "Runtime"].map((t) => ({
         text: t,
-        options: { bold: true, color: C.onDark2, fontSize: 11, fontFace: F.body },
+        options: { bold: true, color: C.onDark2, fontSize: 13, fontFace: F.body },
       })),
       ...data.seeds.map((r) =>
-        r.map((c) => ({ text: c, options: { color: C.white, fontSize: 12.5, fontFace: F.body } }))
+        r.map((c) => ({ text: c, options: { color: C.white, fontSize: 16, fontFace: F.body } }))
       ),
     ],
     {
-      x: L.left, y: 3.4, w: 6.3,
-      colW: [0.9, 1.3, 1.5, 1.3, 1.3],
-      rowH: 0.38,
+      x: L.left, y: 3.66, w: 6.6,
+      colW: [1.0, 1.4, 1.6, 1.3, 1.3],
+      rowH: 0.46,
       border: { type: "solid", color: C.rule, pt: 0.75 },
       fill: { color: C.ground },
       align: "left", valign: "middle", autoPage: false,
     }
   );
-  s.addText(
-    "Budget used: exactly 5,000 unique IDs.  ·  Runtime cap 60 s/seed — worst case 34.5 s.  ·  " +
-      "Guarantee line 0.55 cleared by +0.097.",
-    { x: L.left, y: 5.3, w: 6.3, h: 0.6, margin: 0,
-      fontFace: F.body, fontSize: 11.5, color: C.onDark2, lineSpacingMultiple: 1.15 }
-  );
+  s.addText("5,000 IDs used  ·  34.5 s worst case, cap 60 s  ·  0.55 line cleared by +0.097", {
+    x: L.left, y: 5.76, w: 6.9, h: 0.34, margin: 0,
+    fontFace: F.body, fontSize: T.cap, color: C.onDark2,
+  });
 
   s.addShape(pptx.ShapeType.roundRect, {
-    x: 7.6, y: 1.66, w: 5.01, h: 4.86, rectRadius: 0.05,
+    x: 7.6, y: 1.5, w: 5.01, h: 5.0, rectRadius: 0.05,
     fill: { color: C.groundSoft }, line: { type: "none" },
   });
-  s.addText("WHAT WE WOULD TELL THE NEXT TEAM", {
-    x: 7.92, y: 1.96, w: 4.37, h: 0.28, margin: 0,
-    fontFace: F.body, fontSize: 11, bold: true, charSpacing: 1.1, color: C.accentLt,
+  s.addText("WHAT WE’D TELL THE NEXT TEAM", {
+    x: 7.95, y: 1.86, w: 4.35, h: 0.32, margin: 0,
+    fontFace: F.body, fontSize: 13, bold: true, charSpacing: 1.1, color: C.accentLt,
   });
-  s.addText(
-    [
-      { text: "Read the metric before writing the algorithm. ", options: { bold: true, color: C.white } },
-      { text: "“F1 of a minority class at a frozen threshold” quietly rewrites the problem from “label the most informative points” to “find the most positives and train on the right class ratio.” Every gain we made came from that sentence; every idea that ignored it lost.", options: { color: C.onDark } },
-    ],
-    { x: 7.92, y: 2.4, w: 4.37, h: 2.1, margin: 0,
-      fontFace: F.body, fontSize: 13, lineSpacingMultiple: 1.22 }
-  );
-  s.addText(
-    [
-      { text: "Measure your noise floor first. ", options: { bold: true, color: C.white } },
-      { text: "Ours was ±0.005 — from training row order alone. Without it we would have “improved” the model nine times and shipped nothing but overfitting.", options: { color: C.onDark } },
-    ],
-    { x: 7.92, y: 4.68, w: 4.37, h: 1.6, margin: 0,
-      fontFace: F.body, fontSize: 13, lineSpacingMultiple: 1.22 }
-  );
+
+  s.addText("Read the metric before\nwriting the algorithm.", {
+    x: 7.95, y: 2.42, w: 4.35, h: 0.86, margin: 0,
+    fontFace: F.body, fontSize: 24, bold: true, color: C.white, lineSpacingMultiple: 1.12,
+  });
+  s.addText("It rewrote the problem from “label the most informative points” to “find the most positives”.", {
+    x: 7.95, y: 3.36, w: 4.35, h: 0.9, margin: 0,
+    fontFace: F.body, fontSize: T.body, color: C.onDark, lineSpacingMultiple: 1.18,
+  });
+
+  s.addShape(pptx.ShapeType.line, {
+    x: 7.95, y: 4.5, w: 4.35, h: 0, line: { color: C.rule, width: 1 },
+  });
+
+  s.addText("Measure your noise floor\nfirst.", {
+    x: 7.95, y: 4.72, w: 4.35, h: 0.86, margin: 0,
+    fontFace: F.body, fontSize: 24, bold: true, color: C.white, lineSpacingMultiple: 1.12,
+  });
+  s.addText("Ours was ±0.005. Without it we’d have “improved” the model nine times.", {
+    x: 7.95, y: 5.66, w: 4.35, h: 0.7, margin: 0,
+    fontFace: F.body, fontSize: T.body, color: C.onDark, lineSpacingMultiple: 1.18,
+  });
+
   s.addNotes(
     "Point-six-four-seven-one mean F1, every seed inside thirty-five seconds. The lesson: " +
       "read the metric before you write the algorithm. It quietly rewrote the whole problem.  [~10s]"
