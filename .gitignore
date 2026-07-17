@@ -29,3 +29,6 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# Rendered QA images
+presentation/render/
